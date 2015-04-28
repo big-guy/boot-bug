@@ -1,0 +1,52 @@
+
+apply plugin: 'groovy'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    testCompile 'org.springframework.boot:spring-boot-loader:1.2.3.RELEASE'
+    testCompile "org.codehaus.groovy:groovy-all:2.4.1"
+    testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
+}
+
+task generateResources() {
+    def outputDir = file("${buildDir}/generated-resources")
+    outputs.dir outputDir
+    doLast {
+        outputDir.mkdirs()
+        (1..66000).each {
+            new File(outputDir, "${it}.res").text = it
+        }
+    }
+}
+
+task mkZipJar(type: Jar) {
+    classifier = name
+}
+
+task mkZip64LessThan65kJar(type: Jar) {
+    zip64 = true
+    classifier = name
+}
+
+task mkZip64Jar(type: Jar) {
+    zip64 = true
+    classifier = name
+    from(generateResources)
+}
+
+configure(tasks.withType(Jar)) {
+    manifest {
+        attributes "Start-Class": "Example"
+    } 
+}
+
+test {
+    systemProperty "TEST_65K_ZIP64", mkZip64Jar.archivePath
+    systemProperty "TEST_ZIP64", mkZip64LessThan65kJar.archivePath
+    systemProperty "TEST_ZIP", mkZipJar.archivePath
+}
+
+test.dependsOn tasks.matching { it.name.startsWith("mkZip") }
